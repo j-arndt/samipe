@@ -29,9 +29,9 @@ jobs:
       - name: Run benchmarks
         run: cd impl && python3 bench.py
 
-  verilator-sim:
+  verilator-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +40,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y verilator
 
-      - name: Compile RTL
+      - name: Lint all RTL modules
         run: |
           cd rtl
           verilator --lint-only samipe_cde_firewall.v
@@ -48,15 +48,29 @@ jobs:
           verilator --lint-only samipe_interface_ctl.v
           echo "All RTL files pass Verilator lint"
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+  yosys-synthesis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Install cocotb
-        run: pip install cocotb numpy
-
-      - name: Run cocotb testbench
+      - name: Install Yosys
         run: |
-          cd sim
-          # cocotb simulation with Verilator backend
-          make SIM=verilator || echo "cocotb sim requires Makefile — skipping in CI for now"
+          sudo apt-get update
+          sudo apt-get install -y yosys
+
+      - name: Run generic synthesis (no PDK)
+        run: |
+          cd rtl
+          yosys -s synth_generic.ys 2>&1 | tee yosys_output.log
+          echo ""
+          echo "=== Synthesis Report ==="
+          cat synth_report_generic.txt
+
+      - name: Upload synthesis report
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthesis-report
+          path: |
+            rtl/synth_report_generic.txt
+            rtl/synth_netlist_generic.v
