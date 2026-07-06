@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use SAMIPE in your research, please cite it as below."
+title: "SAMIPE: Self-Auditing, Mathematically Immune Processing Element"
+abstract: >-
+  Hardware-enforced algebraic firewalls for the Armv8.1-M architecture.
+  Lean 4-verified parity-check invariant checker synthesized into a
+  parallel XOR-tree CDE coprocessor module (~79 gates, depth 7).
+  Zero sorries, standard axioms only.
+type: software
+license: GPL-3.0-only
+authors:
+  - family-names: Arndt
+    given-names: Justin
+    email: justinarndt05@gmail.com
+repository-code: "https://github.com/j-arndt/samipe"
+keywords:
+  - formal-verification
+  - lean4
+  - arm-architecture
+  - custom-datapath-extension
+  - hardware-security
+  - algebraic-firewall
+  - synthesizable-rtl
