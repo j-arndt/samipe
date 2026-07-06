@@ -1,0 +1,32 @@
+# Lean 4
+.lake/
+lake-packages/
+build/
+*.olean
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.whl
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Simulation outputs
+*.vcd
+*.fst
+obj_dir/
+sim_build/
+
+# Benchmark data (regenerable)
+impl/results/*.png
