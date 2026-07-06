@@ -1,0 +1,9 @@
+{
+  "matrix_dims": "4x32",
+  "xor2_syndrome_layer": 76,
+  "or2_nmi_reduction": 3,
+  "total_2input_gates": 79,
+  "max_xor_tree_depth": 5,
+  "nmi_or_tree_depth": 2,
+  "total_combinational_depth": 7
+}
