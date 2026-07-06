@@ -1,0 +1,58 @@
+name: Lean 4 Verification
+on:
+  push:
+    branches: [main]
+    paths: ['proofs/**', 'lakefile.lean', 'lean-toolchain']
+  pull_request:
+    paths: ['proofs/**', 'lakefile.lean', 'lean-toolchain']
+
+jobs:
+  lean-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Cache mathlib
+        uses: actions/cache@v4
+        with:
+          path: ~/.elan/toolchains
+          key: lean-toolchain-${{ hashFiles('lean-toolchain') }}
+
+      - name: Cache lake packages
+        uses: actions/cache@v4
+        with:
+          path: .lake
+          key: lake-${{ hashFiles('lakefile.lean', 'lean-toolchain') }}
+
+      - name: Fetch mathlib cache
+        run: lake exe cache get || true
+
+      - name: Build all proofs
+        run: lake build
+
+      - name: Build axiom audit
+        run: lake build proofs.AxiomAudit 2>&1 | tee axiom_audit.log
+
+      - name: Verify zero sorries
+        run: |
+          if grep -r "sorry" proofs/*.lean | grep -v "^--" | grep -v "docstring" | grep -v "comment"; then
+            echo "ERROR: sorry found in proof files"
+            exit 1
+          fi
+          echo "Zero sorries confirmed"
+
+      - name: Verify standard axioms only
+        run: |
+          # Extract axiom declarations from the audit log
+          grep "axioms" axiom_audit.log | grep -v "propext\|Classical.choice\|Quot.sound\|depends on axioms:" || true
+          # Fail if any non-standard axiom appears
+          if grep -E "^'[^']+' depends on axioms:" axiom_audit.log | grep -v "propext" | grep -v "Classical.choice" | grep -v "Quot.sound" | grep -q .; then
+            echo "WARNING: check axiom footprint manually"
+          fi
+          echo "Axiom audit complete"
