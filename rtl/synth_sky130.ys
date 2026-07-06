@@ -1,0 +1,84 @@
+# Copyright (c) 2026 Justin Arndt. All rights reserved.
+# Licensed under the GNU GPLv3. For commercial licensing and proprietary
+# hardware mapping, see the LICENSE file (dual-licensing notice at top).
+#
+# ==========================================================================
+# Yosys Synthesis Script: SAMIPE CDE Firewall → SkyWater SKY130 PDK
+# ==========================================================================
+#
+# Targets the open-source SkyWater 130nm standard cell library for a real,
+# mapped gate-count report with area (um^2) and timing estimates.
+#
+# Usage:
+#   yosys -s synth_sky130.ys
+#
+# Prerequisites:
+#   - Yosys (apt install yosys)
+#   - SkyWater 130nm PDK liberty file:
+#     git clone https://github.com/google/skywater-pdk-libs-sky130_fd_sc_hd
+#     (or use the path below after installing via pip install open_pdks)
+#
+# Output:
+#   rtl/synth_report_sky130.txt    — mapped gate counts, area, timing
+#   rtl/synth_netlist_sky130.v     — mapped netlist (for LVS / P&R)
+#   rtl/synth_stats_sky130.json    — machine-readable statistics
+#
+# ==========================================================================
+
+# ── Read the design ──────────────────────────────────────────────────────
+read_verilog samipe_cde_firewall.v
+
+# ── Elaborate and check ──────────────────────────────────────────────────
+hierarchy -check -top samipe_cde_firewall
+check -assert
+
+# ── High-level synthesis passes ──────────────────────────────────────────
+proc
+flatten
+opt -full
+
+# Technology-independent optimization
+techmap
+opt -full
+clean
+
+# ── Map to SkyWater 130nm standard cells ─────────────────────────────────
+# Path to SKY130 HD liberty timing file — adjust to your installation.
+# Common locations after open_pdks install:
+#   $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+# Or after git clone:
+#   skywater-pdk-libs-sky130_fd_sc_hd/cells/*/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Try common paths (first one found wins):
+abc -liberty $::env(SKY130_LIB) \
+    -constr /dev/null \
+    -D 10000
+
+# If SKY130_LIB not set, use this fallback with explicit path:
+# abc -liberty skywater-pdk-libs-sky130_fd_sc_hd/timing/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# ── Final cleanup ────────────────────────────────────────────────────────
+opt_clean -purge
+clean
+
+# ── Reports ──────────────────────────────────────────────────────────────
+stat -liberty $::env(SKY130_LIB)
+
+# Write detailed report
+tee -o synth_report_sky130.txt stat -liberty $::env(SKY130_LIB)
+
+# Write mapped netlist
+write_verilog synth_netlist_sky130.v
+
+# Write JSON stats
+tee -o synth_stats_sky130.json stat -json
+
+# ── Summary ──────────────────────────────────────────────────────────────
+log ""
+log "=========================================="
+log " SAMIPE Synthesis Complete (SKY130 130nm)"
+log "=========================================="
+log " Report:  rtl/synth_report_sky130.txt"
+log " Netlist: rtl/synth_netlist_sky130.v"
+log " Stats:   rtl/synth_stats_sky130.json"
+log "=========================================="
