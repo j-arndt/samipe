@@ -16,23 +16,7 @@ The system state register is validated every cycle through the CDE coprocessor
 pipeline. Software assertion loops — branch, multiply, compare — cost 350-520
 cycles per check. SAMIPE costs one.
 
-```
-          untrusted / heuristic            |        mathematically immune core
-                                           |
-   agent policy engine                     |        F2 parity-check matrix H
-   heuristic planners ---- state word ---->|------> H * s (mod 2) = syndrome
-   learned controllers                     |            |
-                                           |            v
-   CX2 instruction path                   |        syndrome == 0?
-   (ARM CDE, coprocessor p0)              |         /          \
-                                           |      pass(1)     fail(0)
-                                           |        |            |
-                                           |    write Rd      assert NMI
-                                           |                  to NVIC
-                                           |
-        HMAC-SHA256 audit chain <----------+--- records every check
-        (impl/audit/)                      |    matrix loads + verdicts
-```
+![SAMIPE Architecture](assets/architecture.png)
 
 Every state-word transition is intercepted by the CDE pipeline. The algebraic
 firewall computes the GF(2) syndrome in parallel XOR trees. A zero syndrome
