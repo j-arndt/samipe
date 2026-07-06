@@ -40,6 +40,28 @@ cycle range is estimated at 3 GHz. Hardware cycle count is the single-cycle
 combinational claim backed by gate-level depth analysis, not a measured silicon
 result. See [honesty box](#honesty-box-read-before-quoting) below.
 
+![Performance Chasm: Software vs SAMIPE Hardware](assets/performance_chasm.png)
+
+## Synthesis
+
+Yosys synthesis scripts are included for real, mapped gate-count reports:
+
+| Script | Target | What you get |
+|---|---|---|
+| `rtl/synth_generic.ys` | Technology-independent | Structural gate counts, depth analysis |
+| `rtl/synth_sky130.ys` | SkyWater 130nm (open PDK) | Mapped area (um²), dynamic power (mW), timing |
+
+```bash
+# Generic (no PDK required):
+cd rtl && yosys -s synth_generic.ys
+
+# SkyWater 130nm (requires sky130 liberty file):
+export SKY130_LIB=/path/to/sky130_fd_sc_hd__tt_025C_1v80.lib
+cd rtl && yosys -s synth_sky130.ys
+```
+
+CI runs the generic synthesis on every push (`rtl-verify.yml` → `yosys-synthesis` job).
+
 ## What's in the box
 
 | Path | What it is |
