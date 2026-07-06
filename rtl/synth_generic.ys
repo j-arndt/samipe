@@ -1,0 +1,34 @@
+# Copyright (c) 2026 Justin Arndt. All rights reserved.
+# Licensed under the GNU GPLv3. For commercial licensing and proprietary
+# hardware mapping, see the LICENSE file (dual-licensing notice at top).
+#
+# Yosys generic synthesis (no PDK required). Produces technology-independent
+# gate counts and structural analysis. Use synth_sky130.ys for mapped results.
+#
+# Usage: yosys -s synth_generic.ys
+
+read_verilog samipe_cde_firewall.v
+hierarchy -check -top samipe_cde_firewall
+check -assert
+
+proc; flatten; opt -full
+techmap; opt -full; clean
+
+# Technology-independent statistics
+stat
+tee -o synth_report_generic.txt stat
+
+# ABC mapping to generic gate library for depth analysis
+abc -g AND,OR,XOR,NOT
+opt_clean -purge
+
+stat
+tee -a synth_report_generic.txt stat
+
+write_verilog synth_netlist_generic.v
+
+log ""
+log "=========================================="
+log " SAMIPE Generic Synthesis Complete"
+log " Report: rtl/synth_report_generic.txt"
+log "=========================================="
