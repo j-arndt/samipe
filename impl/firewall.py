@@ -254,7 +254,7 @@ class InvariantMatrix:
         basis = self._kernel_basis()
         lines = [
             f"InvariantMatrix {self.m} x {self.n}",
-            f"  rank(H)      = {self.m - (self.m - len(basis)) + len(basis) - len(basis)}",
+            f"  rank(H)      = {self.n - len(basis)}",
             f"  dim ker(H)   = {len(basis)} (of {self.n})",
             f"  row weight   = {self._H.sum(axis=1).tolist()}",
             f"  col weight   = {self._H.sum(axis=0).tolist()}",
