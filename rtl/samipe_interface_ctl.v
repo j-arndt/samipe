@@ -15,6 +15,12 @@
 // invariant checking, and returns the firewall's pass/fail result to the
 // processor via the CDE accumulator write-back path.
 //
+// PIPELINE NOTE (M1 fix): The firewall's output is REGISTERED (one cycle
+// latency). The interface controller therefore implements a two-cycle
+// handshake for VALIDATE instructions:
+//   Cycle 0: cde_valid + OP_VALIDATE → fw_enable asserted, cde_ready = 0
+//   Cycle 1: Firewall output stable  → cde_result latched, cde_ready = 1
+//
 // CDE instruction format (cx2):
 //   cx2  p<cp>, <Rd>, <Rn>, #<imm>
 //   - cp     : coprocessor number (SAMIPE uses p0 by default)
@@ -23,27 +29,15 @@
 //   - imm    : immediate field (reserved for future sub-operations)
 //
 // Supported opcodes (via cde_imm):
-//   0x00 — VALIDATE: run the firewall check on cde_rn
-//   0x01 — STATUS:   return the last syndrome (diagnostic read-back)
-//
-// Ports:
-//   clk             — system clock
-//   rst_n           — active-low asynchronous reset
-//   cde_valid       — CDE instruction is valid this cycle
-//   cde_opcode[3:0] — CDE opcode field
-//   cde_acc[31:0]   — CDE accumulator input (Rd value)
-//   cde_imm[12:0]   — CDE immediate operand
-//   cde_rn[31:0]    — CDE source register (Rn value — state to check)
-//   cde_result[31:0]— result written back to Rd
-//   cde_ready       — controller ready for next instruction
-//   nmi_out         — non-maskable interrupt output to NVIC
+//   0x00 — VALIDATE: run the firewall check on cde_rn (2-cycle latency)
+//   0x01 — STATUS:   return the last syndrome (1-cycle, combinational)
 //
 // ==========================================================================
 
 module samipe_interface_ctl #(
     parameter COPROC_ID = 4'd0,    // CDE coprocessor slot
     parameter N         = 32,      // State width
-    parameter M         = 4        // Syndrome bits
+    parameter M         = 4        // Syndrome bits (fixed at 4 for this module)
 ) (
     input  wire             clk,
     input  wire             rst_n,
@@ -71,6 +65,12 @@ module samipe_interface_ctl #(
     localparam [12:0] OP_STATUS   = 13'h0001;
 
     // ======================================================================
+    // Pipeline state for the two-cycle VALIDATE handshake
+    // ======================================================================
+
+    reg validate_pending;   // High during the wait cycle after fw_enable
+
+    // ======================================================================
     // Internal signals
     // ======================================================================
 
@@ -78,8 +78,9 @@ module samipe_interface_ctl #(
     wire [31:0] fw_result;
     wire        fw_nmi;
 
-    // Enable the firewall when we receive a valid VALIDATE instruction
-    assign fw_enable = cde_valid && (cde_imm == OP_VALIDATE);
+    // Enable the firewall on the FIRST cycle of a VALIDATE (not during the
+    // pending wait cycle — the firewall is already computing).
+    assign fw_enable = cde_valid && (cde_imm == OP_VALIDATE) && !validate_pending;
 
     // ======================================================================
     // Firewall instance
@@ -104,32 +105,45 @@ module samipe_interface_ctl #(
     assign nmi_out = fw_nmi;
 
     // ======================================================================
-    // Result multiplexing and handshake
+    // Result multiplexing and two-cycle handshake
     // ======================================================================
+    //
+    // VALIDATE timing:
+    //   Cycle 0: cde_valid=1, OP_VALIDATE → fw_enable=1, cde_ready=0,
+    //            validate_pending set for next cycle.
+    //   Cycle 1: validate_pending=1 → fw_result is now stable (firewall
+    //            registered it on this posedge). Latch cde_result, set
+    //            cde_ready=1, clear validate_pending.
+    //
+    // STATUS timing: single cycle (reads last_result, no pipeline hazard).
 
-    // Store last syndrome result for STATUS read-back
     reg [31:0] last_result;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            cde_result  <= 32'd0;
-            cde_ready   <= 1'b1;
-            last_result <= 32'd0;
+            cde_result        <= 32'd0;
+            cde_ready         <= 1'b1;
+            last_result       <= 32'd0;
+            validate_pending  <= 1'b0;
+        end else if (validate_pending) begin
+            // Cycle 1 of VALIDATE: firewall output is now stable
+            cde_result        <= fw_result;
+            last_result       <= fw_result;
+            cde_ready         <= 1'b1;
+            validate_pending  <= 1'b0;
         end else if (cde_valid) begin
             case (cde_imm)
                 OP_VALIDATE: begin
-                    // Result is available one cycle later (registered in firewall)
-                    cde_result  <= fw_result;
-                    last_result <= fw_result;
-                    cde_ready   <= 1'b1;
+                    // Cycle 0 of VALIDATE: fire the check, stall the pipeline
+                    cde_ready        <= 1'b0;   // NOT ready — wait one cycle
+                    validate_pending <= 1'b1;
                 end
                 OP_STATUS: begin
-                    // Return the last firewall result for diagnostic queries
+                    // Single-cycle: return the last stored result
                     cde_result <= last_result;
                     cde_ready  <= 1'b1;
                 end
                 default: begin
-                    // Unknown sub-op: return accumulator pass-through
                     cde_result <= cde_acc;
                     cde_ready  <= 1'b1;
                 end
