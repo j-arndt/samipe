@@ -13,8 +13,8 @@ is **proven in Lean 4** — zero sorries, standard axioms only — and realized 
 ![Performance](https://img.shields.io/badge/speedup-350--520×%20vs%20software-orange)
 
 The system state register is validated every cycle through the CDE coprocessor
-pipeline. Software assertion loops — branch, multiply, compare — cost 350-520
-cycles per check. SAMIPE costs one.
+pipeline. A software assertion loop — branch, multiply, compare — costs hundreds
+of CPU cycles per check. SAMIPE costs one.
 
 ![SAMIPE Architecture](assets/architecture.png)
 
@@ -28,17 +28,19 @@ learned controller produced the state — is never trusted.
 
 | Metric | Software assertion loop | SAMIPE hardware (CDE) |
 |---|---|---|
-| **Cycles per check** | ~350-520 (branch + multiply + compare) | **1** (combinational, single-cycle) |
+| **Cycles per check** | Hundreds (branch + multiply + compare loop) | **1** (combinational, single-cycle) |
 | **Pipeline stalls** | Branch misprediction, data hazards | **None** — purely combinational |
 | **Area** | Zero (runs on main core) | **79 two-input gates** |
 | **Certainty** | Correct iff loop logic is bug-free | **Proven**: `samipe_cde_firewall_sound` in Lean 4 |
 | **Failure response** | Software exception (latency varies) | **Hardware NMI** — 0-cycle interrupt path |
 | **Audit** | Application-level logging | **HMAC-SHA256 chain** — tamper-evident |
 
-Software timings are measured wall-clock on a reference machine; the 350-520
-cycle range is estimated at 3 GHz. Hardware cycle count is the single-cycle
-combinational claim backed by gate-level depth analysis, not a measured silicon
-result. See [honesty box](#honesty-box-read-before-quoting) below.
+The software cycle estimate is an engineering projection for an equivalent C
+assertion loop on ARM bare metal (not measured in this repo — the benchmarks
+measure Python/numpy, which is slower). The hardware cycle count is the
+single-cycle combinational claim backed by gate-level depth analysis (not a
+measured silicon result). Both sides are estimates; see
+[honesty box](#honesty-box-read-before-quoting) below.
 
 ![Performance Chasm: Software vs SAMIPE Hardware](assets/performance_chasm.png)
 
@@ -131,7 +133,7 @@ print(f'Chain OK: {ok}, records: {n}')
 | XOR tree vs numpy | **30,000 random vectors** — exact match on every syndrome bit |
 | RTL equivalence | **ALL CHECKS PASSED** (matrix equality, behaviour, Verilog cross-check) |
 | HMAC audit chain | Creation, verification, and tamper detection all verified |
-| Software speedup | **350-520x** (single-cycle hardware vs multi-cycle software loop) |
+| Software speedup | **Hundreds→1** (single-cycle hardware vs estimated multi-cycle software loop — see honesty box) |
 
 ## Honesty box (read before quoting)
 
@@ -153,10 +155,14 @@ print(f'Chain OK: {ok}, records: {n}')
   will produce a mapped gate count that depends on the target cell library, but
   the logical complexity is a hard lower bound.
 
-- **The 350-520x speedup compares a Python/numpy software loop against the
-  single-cycle hardware claim.** The software cycle estimate assumes ~3 GHz and
-  measures real wall-clock time. The hardware side is the combinational 1-cycle
-  claim from depth analysis, not a measured silicon result.
+- **The speedup comparison is between two estimates, neither measured on target
+  hardware.** The software side is an engineering projection of what an
+  equivalent C parity-check loop would cost on ARM bare metal (~hundreds of
+  cycles for branch + multiply + compare). The Python/numpy benchmarks in
+  `impl/bench.py` measure a different (higher) overhead. The hardware side is
+  the single-cycle combinational claim from gate-depth analysis, not a measured
+  silicon result. The headline "hundreds of cycles → 1 cycle" is directionally
+  correct but neither endpoint is a direct measurement from this repository.
 
 - **The CDE interface controller (`samipe_interface_ctl.v`) is a stub.** It
   demonstrates the CDE port mapping and instruction decode but has not been
