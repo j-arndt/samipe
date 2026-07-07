@@ -39,10 +39,13 @@ GENESIS = "0" * 64
 DEV_KEY = b"samipe-dev-key-NOT-FOR-PRODUCTION"
 
 PROOF_FILES = [
-    "rtl/samipe_checker.v",
+    "proofs/SAMIPECore.lean",
+    "proofs/AxiomAudit.lean",
+    "rtl/samipe_cde_firewall.v",
     "rtl/netlist.json",
     "impl/firewall.py",
     "impl/rtl_equiv.py",
+    "lean-toolchain",
 ]
 
 
