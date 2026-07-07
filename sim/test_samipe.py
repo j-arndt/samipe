@@ -8,7 +8,7 @@ state input onto syndrome bits (via parallel XOR trees) and asserts NMI
 when any syndrome bit is nonzero.  This testbench drives the real ports
 and checks the verdicts.
 
-The Verilog module under test (samipe_checker) has:
+The Verilog module under test (samipe_cde_firewall) has:
     input  [31:0] state,        -- 32-bit processor state word
     output [3:0]  syndrome,     -- 4-bit syndrome (one per parity-check row)
     output        nmi           -- Non-Maskable Interrupt (OR of syndrome bits)
@@ -17,8 +17,8 @@ A state passes iff syndrome == 4'b0000 and nmi == 0.
 
 Run (example, Icarus Verilog backend):
     pip install cocotb
-    # with a cocotb Makefile or runner pointing TOPLEVEL=samipe_checker
-    #   VERILOG_SOURCES=../rtl/samipe_checker.v  SIM=icarus
+    # with a cocotb Makefile or runner pointing TOPLEVEL=samipe_cde_firewall
+    #   VERILOG_SOURCES=../rtl/samipe_cde_firewall.v  SIM=icarus
 
 The test vectors below are computed from the Python firewall reference
 (impl/firewall.py default_32bit) and are NOT placeholders.
