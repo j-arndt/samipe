@@ -46,8 +46,11 @@
 // ==========================================================================
 
 module samipe_configurable #(
-    parameter N = 32,   // State register width
-    parameter M = 4     // Number of syndrome / parity-check rows
+    parameter N = 32    // State register width
+    // NOTE: The number of syndrome rows is fixed at 4 in this module.
+    // The ports, latches, and syndrome assignments are all hardcoded for
+    // 4 rows. To support a different row count, instantiate multiple
+    // modules or rewrite the syndrome computation with a generate block.
 ) (
     input  wire             clk,
     input  wire             rst_n,
@@ -71,7 +74,7 @@ module samipe_configurable #(
     // Configuration latch — capture matrix rows on config_valid rising edge
     // ======================================================================
 
-    reg [N-1:0] h_row_latched [0:M-1];
+    reg [N-1:0] h_row_latched [0:3];  // 4 rows, fixed
     reg         matrix_loaded;
 
     always @(posedge clk or negedge rst_n) begin
@@ -94,7 +97,7 @@ module samipe_configurable #(
     // Syndrome computation — parallel XOR reduction trees
     // ======================================================================
 
-    wire [M-1:0] syndrome;
+    wire [3:0] syndrome;  // 4 syndrome bits, fixed
 
     assign syndrome[0] = ^(state_reg_val & h_row_latched[0]);
     assign syndrome[1] = ^(state_reg_val & h_row_latched[1]);
@@ -105,7 +108,7 @@ module samipe_configurable #(
     // Registered output logic
     // ======================================================================
 
-    wire syndrome_zero  = (syndrome == {M{1'b0}});
+    wire syndrome_zero  = (syndrome == 4'b0000);
     wire enforce_active = matrix_loaded & cde_en;
 
     always @(posedge clk or negedge rst_n) begin
