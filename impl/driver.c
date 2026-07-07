@@ -51,18 +51,15 @@
  * @param   imm         Immediate operand selector.
  * @return  32-bit result from Rd.
  */
-static inline uint32_t samipe_cx2(uint32_t state_val, uint32_t imm)
+/**
+ * @brief   Issue a CX2 VALIDATE instruction to the SAMIPE coprocessor.
+ *
+ * Hardcodes the VALIDATE immediate (#0x0000). For STATUS read-back,
+ * use samipe_cx2_status() instead.
+ */
+static inline uint32_t samipe_cx2_validate(uint32_t state_val)
 {
     uint32_t result;
-
-    /*
-     * Note: The CX2 immediate is a compile-time constant in the real
-     * instruction encoding. For a production driver targeting a single
-     * operation, separate functions (or a macro with __builtin_constant_p)
-     * would emit distinct CX2 encodings. Here we use the VALIDATE
-     * immediate inline and provide a separate path for STATUS.
-     */
-    (void)imm;  /* See samipe_read_status() for STATUS path */
 
     __asm__ volatile (
         "cx2 p0, %0, %1, #0x0000"
@@ -112,7 +109,7 @@ static inline uint32_t samipe_cx2_status(void)
  */
 uint32_t validate_system_state_hardware(uint32_t state_val)
 {
-    return samipe_cx2(state_val, SAMIPE_OP_VALIDATE);
+    return samipe_cx2_validate(state_val);
 }
 
 /* ======================================================================
