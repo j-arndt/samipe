@@ -52,7 +52,9 @@ jobs:
           # Extract axiom declarations from the audit log
           grep "axioms" axiom_audit.log | grep -v "propext\|Classical.choice\|Quot.sound\|depends on axioms:" || true
           # Fail if any non-standard axiom appears
-          if grep -E "^'[^']+' depends on axioms:" axiom_audit.log | grep -v "propext" | grep -v "Classical.choice" | grep -v "Quot.sound" | grep -q .; then
-            echo "WARNING: check axiom footprint manually"
+          if grep -E "depends on axioms:" axiom_audit.log | grep -v "propext" | grep -v "Classical.choice" | grep -v "Quot.sound" | grep -v "depends on axioms: \[" | grep -q .; then
+            echo "ERROR: non-standard axiom detected"
+            grep -E "depends on axioms:" axiom_audit.log | grep -v "propext" | grep -v "Classical.choice" | grep -v "Quot.sound"
+            exit 1
           fi
-          echo "Axiom audit complete"
+          echo "Axiom audit complete — standard axioms only"
