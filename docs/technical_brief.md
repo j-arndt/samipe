@@ -269,8 +269,8 @@ proof structure — see Days 1–30 in §7.
 a zero syndrome; 20,000 random invalid vectors all produce nonzero syndrome;
 5,000 adversarial single-bit flips injected into valid states are all
 detected; every nonzero entry in `H` was individually exercised and shown to
-flip its corresponding syndrome bit (100% failure-witness coverage, `76`
-covered nonzero entries in the default 4x32 matrix — `sim/functional_test.py`,
+flip its corresponding syndrome bit (100% failure-witness coverage, `80`
+covered nonzero entries in the default 4x32 matrix — 16+16+16+32 across the four rows — `sim/functional_test.py`,
 `test_failure_witness_coverage`).
 
 ---
